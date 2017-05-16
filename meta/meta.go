@@ -1,19 +1,18 @@
 package meta
 
 import (
-	"fmt"
-	"time"
-	"errors"
-	"strings"
-	"math/rand"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/ksarch-saas/cfgServer/redis"
 	"github.com/ksarch-saas/cfgServer/utils"
 	"github.com/mediocregopher/radix.v2/cluster"
 )
-
 
 var IdcToRegion = map[string]string{
 	"jx":   "bj",
@@ -29,122 +28,138 @@ var IdcToRegion = map[string]string{
 }
 
 var RegionToIdcs = map[string][]string{
-	"bj":   {"jx","tc"},
-	"nj":   {"nj","nj03"},
-	"gz":   {"gz"},
-	"hz":   {"hz"},
-	"sh":   {"sh"},
-	"sz":   {"sz"},
-	"nmg":  {"nmg"},
-	"yq":   {"yq"},
+	"bj":  {"jx", "tc"},
+	"nj":  {"nj", "nj03"},
+	"gz":  {"gz"},
+	"hz":  {"hz"},
+	"sh":  {"sh"},
+	"sz":  {"sz"},
+	"nmg": {"nmg"},
+	"yq":  {"yq"},
 }
 
 var meta *Meta
 
 type Meta struct {
-	appName						string
-	currIdc						string
-	currId						string
-	clusterVersion				int
-	configVersion				int
-	metaDBConn					*cluster.Cluster
-	clusterConfig				*ClusterMeta
-	cfgConfig					*CfgMeta
-	failoverConfig				*FailoverMeta
-	migrateConfig				*MigrateMeta
-	topo						*TopoMeta
+	appName        string
+	currIdc        string
+	currId         string
+	clusterVersion int
+	configVersion  int
+	metaDB         string
+	metaDBConn     *cluster.Cluster
+	clusterConfig  *ClusterMeta
+	cfgConfig      *CfgMeta
+	failoverConfig *FailoverMeta
+	migrateConfig  *MigrateMeta
+	topo           *TopoMeta
 }
 
 const (
-	CONFIG_NIL							= 0 
-	CHECKOUT_CFGVERSION_TIMEOUT			= 1
+	CONFIG_NIL                  = 0
+	CHECKOUT_CFGVERSION_TIMEOUT = 1
+	INIT_META_SUCCESS			= 1
 )
-
 
 /*
  * Meta Struct Operations
  */
-func (meta *Meta)AppName() string {
+
+func AppName() string {
 	return meta.appName
 }
 
-func (meta *Meta)Idc() string {
+func Idc() string {
 	return meta.currIdc
 }
 
-func (meta *Meta)CurrID() string {
+func CurrID() string {
 	return meta.currId
 }
 
-func (meta *Meta)MetaDBConn() *cluster.Cluster {
+func MetaDbName() string {
+	return meta.metaDB
+}
+
+func MetaDBConn() *cluster.Cluster {
 	return meta.metaDBConn
 }
 
-func (meta *Meta)ClusterVersion() int {
+func ClusterVersion() int {
 	return meta.clusterVersion
 }
 
-func (meta *Meta)ConfigVersion() int {
+func ConfigVersion() int {
 	return meta.configVersion
 }
 
-func (meta *Meta)ClusterConfig() *ClusterMeta {
+func ClusterConfig() *ClusterMeta {
 	return meta.clusterConfig
 }
 
-func (meta *Meta)CfgConfig() *CfgMeta {
+func CfgConfig() *CfgMeta {
 	return meta.cfgConfig
 }
 
-func (meta *Meta)FailoverConfig() *FailoverMeta {
+func FailoverConfig() *FailoverMeta {
 	return meta.failoverConfig
 }
 
-func (meta *Meta)MigrateConfig() *MigrateMeta {
+func MigrateConfig() *MigrateMeta {
 	return meta.migrateConfig
 }
 
-func (meta *Meta)Topo() *TopoMeta {
+func Topo() *TopoMeta {
 	return meta.topo
 }
 
-func (meta *Meta)String() string {
-	type output struct{
-		AppName						string
-		CfgIdc						string
-		Address						string
-		ClusterVersion				int
-		ConfigVersion				int
-		ClusterConfig				ClusterMeta
-		CfgConfig					CfgMeta
-		FailoverConfig				FailoverMeta
-		MigrateConfig				MigrateMeta
-		Topo						TopoMeta
+func Region() string {
+	return IdcToRegion[meta.currIdc]
+}
+
+func IsMasterRegion(region string) bool {
+	for _, midc :=range meta.clusterConfig.MasterIdc {
+		if strings.EqualFold(IdcToRegion[midc], region) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+func (meta *Meta) String() string {
+	type output struct {
+		AppName        string
+		MetaDBName     string
+		CfgIdc         string
+		Address        string
+		ClusterVersion int
+		ConfigVersion  int
+		ClusterConfig  ClusterMeta
+		CfgConfig      CfgMeta
+		FailoverConfig FailoverMeta
+		MigrateConfig  MigrateMeta
+		Topo           TopoMeta
 	}
 	info := &output{
-		AppName				: 		meta.AppName(),
-		CfgIdc				: 		meta.Idc(),
-		Address				:		meta.CurrID(),
-		ClusterVersion		:		meta.ClusterVersion(),
-		ConfigVersion		:		meta.ConfigVersion(),
-		ClusterConfig		:		*meta.ClusterConfig(),
-		CfgConfig			:		*meta.CfgConfig(),
-		FailoverConfig		:		*meta.FailoverConfig(),
-		MigrateConfig		:		*meta.MigrateConfig(),
-		Topo				:		*meta.Topo(),
+		AppName:        AppName(),
+		MetaDBName:     MetaDbName(),
+		CfgIdc:         Idc(),
+		Address:        CurrID(),
+		ClusterVersion: ClusterVersion(),
+		ConfigVersion:  ConfigVersion(),
+		ClusterConfig:  *ClusterConfig(),
+		CfgConfig:      *CfgConfig(),
+		FailoverConfig: *FailoverConfig(),
+		MigrateConfig:  *MigrateConfig(),
+		Topo:           *Topo(),
 	}
 
-	infoByte , _ :=json.Marshal(info)
+	infoByte, _ := json.Marshal(info)
 	return fmt.Sprintln(string(infoByte))
 }
 
-/* 
- * Set function rule adapt to all structs:
- * 	1. set redis, return success ,go on
- * 	2. set meta struct, return true
- * 	3. 1-2 is sync and ordered
- */
-func (meta *Meta)SetClusterVersion(clusterVersion int) error{
+func SetClusterVersion(clusterVersion int) error {
 	err := UpdateMetaDB(".ClusterVersion", &clusterVersion)
 	if err != nil {
 		glog.Error(err)
@@ -158,8 +173,9 @@ func (meta *Meta)SetClusterVersion(clusterVersion int) error{
 /*
  * General functions for all structs
  */
+
 func MetaAddress() (string, error) {
-	bns := "redis4db-" + meta.AppName() + ".osp." + meta.Idc()
+	bns := "redis4db-" + MetaDbName() + ".osp." + Idc()
 	addrString, err := utils.GetAddrFromBNS(bns)
 	if err != nil {
 		glog.Error(err)
@@ -168,7 +184,7 @@ func MetaAddress() (string, error) {
 	hosts := strings.Fields(addrString)
 
 	var addrs []string
-	for _ , host := range hosts {
+	for _, host := range hosts {
 		addrs = append(addrs, host)
 	}
 	if len(addrs) == 0 {
@@ -178,37 +194,41 @@ func MetaAddress() (string, error) {
 	return addrs[rand.Intn(len(addrs))], nil
 }
 
-func FetchMetaDB(jsonObj string, data interface{}) error{
-	conn := meta.MetaDBConn()
-	reply, err := conn.Cmd("json.get", meta.AppName(), jsonObj).Bytes()
+func FetchMetaDB(jsonObj string, data interface{}) error {
+	conn := MetaDBConn()
+	reply, err := conn.Cmd("json.get", AppName(), jsonObj).Bytes()
 	if err != nil {
-		glog.Error(err)
+		glog.Error(err,jsonObj)
 		return err
 	}
+
 	err = json.Unmarshal(reply, data)
 	if err != nil {
 		glog.Error(err)
 		return err
 	}
+
 	return nil
 }
 
-func UpdateMetaDB(jsonObj string , data interface{}) error {
-	dataByte , err :=json.Marshal(data)
+func UpdateMetaDB(jsonObj string, data interface{}) error {
+	dataByte, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	dataString := string(dataByte)
-	conn := meta.MetaDBConn()
-	reply, err := conn.Cmd("json.set", meta.AppName(), jsonObj, dataString).Str()
+
+	conn := MetaDBConn()
+	reply, err := conn.Cmd("json.set", AppName(), jsonObj, dataString).Str()
 	if err != nil {
-		glog.Error(err)
+		glog.Error(err, jsonObj, dataString)
 		return err
 	}
 	if !strings.Contains(reply, "OK") {
-		glog.Error(errors.New(reply))
+		glog.Error(reply, jsonObj, dataString)
 		return errors.New(reply)
 	}
+
 	return nil
 }
 
@@ -244,7 +264,7 @@ func FetchTopo(topoMeta *TopoMeta) error {
 	return topoMeta.FetchTopoMeta()
 }
 
-func FetchMeta() (error) {
+func FetchMeta() error {
 	err := FetchClusterVersion(&meta.clusterVersion)
 	if err != nil {
 		return err
@@ -276,54 +296,57 @@ func FetchMeta() (error) {
 	return nil
 }
 
-func Run(appName, idc, address string, initCh chan error){
+func Run(appName, metaDbName, idc, address string, initCh chan error, notify chan int) {
 	meta = &Meta{
-		appName			:		appName,
-		currIdc			:		idc,
-		currId			:		address,
-		clusterVersion	:		0,
-		configVersion	:		0,
-		metaDBConn		:		&cluster.Cluster{},
-		clusterConfig	: 		&ClusterMeta{},
-		cfgConfig		:		&CfgMeta{},
-		failoverConfig	:		&FailoverMeta{},
-		migrateConfig 	:		&MigrateMeta{},
-		topo			:		&TopoMeta{},
+		appName:        appName,
+		currIdc:        idc,
+		currId:         address,
+		clusterVersion: 0,
+		configVersion:  0,
+		metaDB:         metaDbName,
+		metaDBConn:     &cluster.Cluster{},
+		clusterConfig:  &ClusterMeta{},
+		cfgConfig:      &CfgMeta{},
+		failoverConfig: &FailoverMeta{},
+		migrateConfig:  &MigrateMeta{},
+		topo:           &TopoMeta{},
 	}
 	addr, err := MetaAddress()
 	if err != nil {
 		initCh <- fmt.Errorf("BNS error: %v", err)
-		return 
+		return
 	}
 	dbConn, err := redis.DialCluster(addr)
 	if err != nil {
 		initCh <- fmt.Errorf("MetaDB: can't connect: %v", err)
-		return 
+		return
 	}
-	meta.metaDBConn	= dbConn
+	meta.metaDBConn = dbConn
 	err = FetchMeta()
 	if err != nil {
 		initCh <- fmt.Errorf("Fetch Meta error: %v", err)
-		return 
+		return
 	}
+	glog.Info("Fetch meta data:", meta)
+	notify <- INIT_META_SUCCESS
 
 	var cfgVer = meta.configVersion
 	tickChan := time.NewTicker(time.Second * CHECKOUT_CFGVERSION_TIMEOUT).C
 	for {
-		select{
-		case <- tickChan :
+		select {
+		case <-tickChan:
 			err := FetchConfigVersion(&cfgVer)
 			if err != nil {
 				initCh <- fmt.Errorf("Fetch CfgVersion error: %v", err)
 				break
 			}
-			if cfgVer != meta.configVersion {
-				glog.Info("Current configversion:", cfgVer, ", ", "MetaDb configVersion:", meta.configVersion)
+			if cfgVer > meta.configVersion {
+				glog.Info("Old configversion:", meta.configVersion, ", ", "Current configVersion:", cfgVer)
 				glog.Info("Updat meta begin:", meta)
 				err = FetchMeta()
 				if err != nil {
 					initCh <- fmt.Errorf("Fetch Meta error: %v", err)
-					continue
+					break
 				}
 				glog.Info("Updat meta end:", meta)
 			}

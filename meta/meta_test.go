@@ -1,20 +1,19 @@
 package meta
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"testing"
 
 	"github.com/ksarch-saas/cfgServer/redis"
 	"github.com/mediocregopher/radix.v2/cluster"
 )
 
-
 func TestMetaAddress(t *testing.T) {
 	meta = &Meta{
-		appName		:		"ssdb-test",
-		currIdc		:		"tc",
-		currId		:		"10.67.17.43:3700",
+		appName: "ssdb-test",
+		currIdc: "tc",
+		currId:  "10.67.17.43:3700",
 	}
 	res, err := MetaAddress()
 	fmt.Println(res, err)
@@ -76,17 +75,17 @@ func TestFetchMeta(t *testing.T) {
 	// Run("ssdb-test", "tc", "10.67.17.43:3700", initCh)
 	// fmt.Println(meta)
 	meta = &Meta{
-		appName			:		"ssdb-test",
-		currIdc			:		"tc",
-		currId			:		"",
-		clusterVersion	:		0,
-		configVersion	:		0,
-		metaDBConn		:		&cluster.Cluster{},
-		clusterConfig	: 		&ClusterMeta{},
-		cfgConfig		:		&CfgMeta{},
-		failoverConfig	:		&FailoverMeta{},
-		migrateConfig 	:		&MigrateMeta{},
-		topo			:		&TopoMeta{},
+		appName:        "ssdb-test",
+		currIdc:        "tc",
+		currId:         "",
+		clusterVersion: 0,
+		configVersion:  0,
+		metaDBConn:     &cluster.Cluster{},
+		clusterConfig:  &ClusterMeta{},
+		cfgConfig:      &CfgMeta{},
+		failoverConfig: &FailoverMeta{},
+		migrateConfig:  &MigrateMeta{},
+		topo:           &TopoMeta{},
 	}
 	addr, err := MetaAddress()
 	if err != nil {
@@ -98,7 +97,7 @@ func TestFetchMeta(t *testing.T) {
 		fmt.Println(err)
 		return
 	}
-	meta.metaDBConn	= dbConn
+	meta.metaDBConn = dbConn
 
 	err = FetchMeta()
 	fmt.Println(meta)
@@ -109,7 +108,7 @@ func TestRun(t *testing.T) {
 	flag.Lookup("logtostderr").Value.Set("true")
 
 	initCh := make(chan error)
-	go Run("ssdb-test", "tc", "10.67.17.43:3700", initCh)
+	go Run("asddd", "ssdb-test", "tc", "10.67.17.43:3700", initCh)
 	err := <-initCh
 	if err != nil {
 		fmt.Println(err)

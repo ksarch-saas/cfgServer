@@ -4,6 +4,8 @@ package meta
 type ClusterMeta struct {
 	ClusterConfigTimeout		int
 	ClusterNodeTimeout			int
+	VoteTimeout          		int
+	FailoverRatio        		int
 	SafeMode					bool
 	Shardings					int
 	Replicates					int
@@ -14,6 +16,8 @@ type ClusterMeta struct {
 const (
 	DEFAULT_CLUSTER_CONFIG_TIMEOUT		= 100
 	DEFAULT_CLUSTER_NODE_TIMEOUT		= 1000
+	DEFAULT_VOTE_TIMEOUT           		= 4 * DEFAULT_CLUSTER_NODE_TIMEOUT
+	DEFAULT_FAILOVER_RATIO         		= 50
 )
 
 func (clusterMeta *ClusterMeta) FetchClusterMeta() error{
@@ -27,6 +31,12 @@ func (clusterMeta *ClusterMeta) FetchClusterMeta() error{
 	}
 	if clusterMeta.ClusterNodeTimeout == CONFIG_NIL {
 		 clusterMeta.ClusterNodeTimeout = DEFAULT_CLUSTER_NODE_TIMEOUT
+	}
+	if clusterMeta.VoteTimeout == CONFIG_NIL {
+		clusterMeta.VoteTimeout = DEFAULT_VOTE_TIMEOUT
+	}
+	if clusterMeta.FailoverRatio == CONFIG_NIL {
+		clusterMeta.FailoverRatio = DEFAULT_FAILOVER_RATIO
 	}
 
 	return nil
