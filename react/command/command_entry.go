@@ -30,16 +30,16 @@ type Command interface {
 
 var (
 	ErrProcessCommandTimedout = errors.New("cfgserver: process command timeout")
-	ErrNotMasterCfg	    	  = errors.New("cfgserver: not master cfgserver")
+	ErrNotMasterCfg           = errors.New("cfgserver: not master cfgserver")
 )
 
 type Controller struct {
-	mutex          sync.Mutex
+	mutex sync.Mutex
 }
 
 func NewController() *Controller {
 	c := &Controller{
-		mutex:          sync.Mutex{},
+		mutex: sync.Mutex{},
 	}
 	return c
 }
@@ -52,7 +52,6 @@ func (c *Controller) ProcessCommand(command Command, timeout time.Duration) (res
 		}
 	}
 
-	// 一次处理一条命令，也即同一时间只能在做一个状态变换
 	commandType := strings.Split(reflect.TypeOf(command).String(), ".")
 	commandName := ""
 	if len(commandType) == 2 && commandType[1] != "UpdateRegionCommand" {
@@ -61,7 +60,7 @@ func (c *Controller) ProcessCommand(command Command, timeout time.Duration) (res
 	if commandName != "" {
 		glog.Infof("OP", "Command: %s, Event:Start", commandName)
 	}
-	// command must be excuted serial
+
 	if command.Mutex() == MUTEX_COMMAND {
 		c.mutex.Lock()
 		defer c.mutex.Unlock()
@@ -90,4 +89,3 @@ func (c *Controller) ProcessCommand(command Command, timeout time.Duration) (res
 	}
 	return
 }
-

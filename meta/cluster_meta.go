@@ -41,3 +41,11 @@ func (clusterMeta *ClusterMeta) FetchClusterMeta() error{
 
 	return nil
 }
+
+func (meta *Meta)ClusterIdcs() []string {
+	return meta.clusterConfig.Idc
+}
+
+func ProbeTimeout() int {
+	return meta.clusterConfig.ClusterNodeTimeout
+}

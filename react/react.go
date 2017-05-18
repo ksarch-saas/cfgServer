@@ -26,7 +26,7 @@ func NewReact(httpPort int) *React {
 	
 	gin.SetMode(gin.ReleaseMode)
 
-	react.Router.POST("/region/mergeseeds", react.HandleMergeSeeds)
+	react.Router.POST("/region/updatenodes", react.HandleUpdateNodes)
 
 	return react
 }
@@ -35,11 +35,11 @@ func (react *React) Run() {
 	react.Router.Run(react.HttpBindAddr)
 }
 
-func (react *React) HandleMergeSeeds(c *gin.Context) {
-	var params api.MergeSeedsParams
+func (react *React) HandleUpdateNodes(c *gin.Context) {
+	var params api.UpdateNodesParams
 	c.Bind(&params)
 
-	cmd := command.MergeSeedsCommand{
+	cmd := command.UpdateNodesCommand{
 		Region:	params.Region, 
 		CfgID:	params.CfgID,
 		Seeds:	params.Seeds,

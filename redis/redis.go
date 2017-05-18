@@ -1,8 +1,13 @@
 package redis
 
 import (
+	"fmt"
 	"time"
+	"strings"
+
+	"github.com/golang/glog"
 	"github.com/mediocregopher/radix.v2/cluster"
+	"github.com/mediocregopher/radix.v2/redis"
 )
 
 const (
@@ -12,6 +17,9 @@ const (
 	WRITE_TIMEOUT = 120 * time.Second
 )
 
+/*
+ * DialCluster and RedisCusterCli is used to metadb
+ */
 func DialCluster(addr string) (*cluster.Cluster, error) {
 	options := cluster.Opts{
 		Addr:     addr,
@@ -36,3 +44,89 @@ func RedisCusterCli(addr string, cmd string, args ...interface{}) (interface{}, 
 
 	return reply, reply.Err
 }
+
+/*
+ * above funcs is used to ssdb
+ */
+
+func dail(address string) (*redis.Client, error){
+	client, err := redis.DialTimeout("tcp", address, CONN_TIMEOUT)
+	if err != nil {
+		glog.Error("Dail redis error:", err)
+	}
+	return client, err
+}
+
+func RedisCli(addr string, cmd string, args ...interface{}) (interface{}, error) {
+	client, err := dail(addr)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+	reply := client.Cmd(cmd, args ...)
+	if reply.Err != nil {
+		return nil, reply.Err
+	}
+	return reply, nil
+}
+
+
+func Info(addr string) (map[string]string, error){
+	reply, err := RedisCli(addr, "info")
+	if err != nil {
+		return nil, err
+	}
+
+	reply_array, err := reply.(*redis.Resp).List()
+	if err != nil {
+		return nil, err
+	}
+
+	var seg []string
+	for _, ele := range reply_array {
+		seg = append(seg, strings.Fields(ele)...)
+	}
+
+	info := make(map[string]string)
+	for idx, rep := range seg {
+		if strings.Contains(rep, "dbsize") {
+			info["dbsize"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "master_host"){
+			info["master_host"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "master_port"){
+			info["master_port"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "last_seq"){
+			info["last_seq"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "readonly"){
+			info["readonly"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "slot"){
+			slot_num := 0
+			idx = idx + 1
+			for {
+				slot := seg[idx]
+				if !strings.Contains(slot, "[") || 
+				!strings.Contains(slot, "-") || 
+				!strings.Contains(slot, "]") {
+					break
+				}
+
+				start := fmt.Sprintf("slot_start_%d", slot_num)
+				end   := fmt.Sprintf("slot_end_%d", slot_num)
+				info[start] = slot[strings.Index(slot, "[")+1 : strings.Index(slot, "-")]
+				info[end] = slot[strings.Index(slot, "-")+1 : strings.Index(slot, "]")]
+				slot_num = slot_num + 1
+				idx = idx +1
+
+			}
+			info["slot_num"] = fmt.Sprintf("%d", slot_num)
+		}
+	}
+
+	return info, nil
+}
+
+
+
+
+
+

@@ -178,7 +178,7 @@ func Run(initCh chan error) {
 	roleTickChan := time.NewTicker(time.Second * time.Duration(meta.CfgCheckMutextTimeout())).C
 	for {
 		select {
-		case <-roleTickChan:
+		case <- roleTickChan:
 			if !meta.IsMasterRegion(roleManager.own.Region) {
 				glog.Info("Cross region slave do not participate in compete")
 				break

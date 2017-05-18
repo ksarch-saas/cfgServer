@@ -1,5 +1,5 @@
 package api
 
 const (
-	MergeSeedsPath				= "region/mergeseeds"
+	UpdateNodesPath				= "/region/updatenodes"
 )

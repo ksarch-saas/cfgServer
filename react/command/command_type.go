@@ -1,4 +1,4 @@
 package command
 
 
-func (self *MergeSeedsCommand) Type() CommandType	{ return CLUSTER_COMMAND }
+func (self *UpdateNodesCommand) Type() CommandType	{ return CLUSTER_COMMAND }

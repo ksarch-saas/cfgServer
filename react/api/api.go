@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/ksarch-saas/cfgServer/meta"
+	// "github.com/ksarch-saas/cfgServer/cluster"
 )
 
 type Response struct {
@@ -23,8 +23,8 @@ func MakeFailureResponse(msg string) Response {
 }
 
 
-type MergeSeedsParams struct {
-	Region 			string       	`json:"region"`
-	CfgID			string			`json:"CfgID"`
-	Seeds  			[]*meta.Node 	`json:"seeds"`
+type UpdateNodesParams struct {
+	Region 			string       			`json:"region"`
+	CfgID			string					`json:"CfgID"`
+	Seeds  			interface{} 			`json:"seeds"`
 }

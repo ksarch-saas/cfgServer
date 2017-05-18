@@ -68,3 +68,7 @@ func CfgMutexExpire() int {
 func CfgCheckMutextTimeout() int {
 	return meta.cfgConfig.CheckoutMutexTimeout 
 }
+
+func MasterCfgAdress() string{
+	return meta.cfgConfig.MasterCfgNode.NodeID
+}

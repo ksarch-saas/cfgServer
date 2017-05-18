@@ -1,4 +1,4 @@
 package command
 
 
-func (self *MergeSeedsCommand) Mutex() CommandType	{ return MUTEX_COMMAND }
+func (self *UpdateNodesCommand) Mutex() CommandType	{ return MUTEX_COMMAND }
