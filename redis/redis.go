@@ -5,7 +5,6 @@ import (
 	"time"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/mediocregopher/radix.v2/cluster"
 	"github.com/mediocregopher/radix.v2/redis"
 )
@@ -28,9 +27,17 @@ func DialCluster(addr string) (*cluster.Cluster, error) {
 	}
 
 	client, err := cluster.NewWithOpts(options)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return client, nil
 	}
+
+	for retry := 0; retry <  NUM_RETRY; retry++ {
+		client, err = cluster.NewWithOpts(options)
+		if err == nil {
+			break
+		}
+	}
+
 	return client, nil
 }
 
@@ -51,9 +58,17 @@ func RedisCusterCli(addr string, cmd string, args ...interface{}) (interface{}, 
 
 func dail(address string) (*redis.Client, error){
 	client, err := redis.DialTimeout("tcp", address, CONN_TIMEOUT)
-	if err != nil {
-		glog.Error("Dail redis error:", err)
+	if err == nil {
+		return client, err
 	}
+
+	for retry := 0; retry <  NUM_RETRY; retry++ {
+		client, err = redis.DialTimeout("tcp", address, CONN_TIMEOUT)
+		if err == nil {
+			break
+		}
+	}
+
 	return client, err
 }
 

@@ -1,5 +1,9 @@
 package meta
 
+import (
+	"strings"
+)
+
 type CfgNode struct {
 	NodeID 		string
 	Region 		string
@@ -9,6 +13,7 @@ type CfgNode struct {
 type CfgMeta struct {
 	CheckoutMutexTimeout int
 	MutexExpire          int
+	MasterRegion		 string
 	MasterCfgNode        CfgNode
 	CfgNodes             []CfgNode
 }
@@ -71,4 +76,16 @@ func CfgCheckMutextTimeout() int {
 
 func MasterCfgAdress() string{
 	return meta.cfgConfig.MasterCfgNode.NodeID
+}
+
+func SlaveCfgNum() int {
+	return len(meta.cfgConfig.CfgNodes)
+}
+
+func MasterCfgRegion() string {
+	return meta.cfgConfig.MasterRegion
+}
+
+func IsMasterCfgRegion(region string) bool {
+	return strings.EqualFold(meta.cfgConfig.MasterRegion, region)
 }

@@ -1,12 +1,12 @@
 package meta
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"math/rand"
-	"strings"
 	"time"
+	"errors"
+	"strings"
+	"math/rand"
+	"encoding/json"
 
 	"github.com/golang/glog"
 	"github.com/ksarch-saas/cfgServer/redis"
@@ -58,7 +58,7 @@ type Meta struct {
 const (
 	CONFIG_NIL                  = 0
 	CHECKOUT_CFGVERSION_TIMEOUT = 1
-	INIT_META_SUCCESS			= 1
+	INIT_META_SUCCESS           = 1
 )
 
 /*
@@ -118,12 +118,12 @@ func Region() string {
 }
 
 func IsMasterRegion(region string) bool {
-	for _, midc :=range meta.clusterConfig.MasterIdc {
+	for _, midc := range meta.clusterConfig.MasterIdc {
 		if strings.EqualFold(IdcToRegion[midc], region) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -169,7 +169,6 @@ func SetClusterVersion(clusterVersion int) error {
 	return nil
 }
 
-
 /*
  * General functions for all structs
  */
@@ -198,7 +197,7 @@ func FetchMetaDB(jsonObj string, data interface{}) error {
 	conn := MetaDBConn()
 	reply, err := conn.Cmd("json.get", AppName(), jsonObj).Bytes()
 	if err != nil {
-		glog.Error(err,jsonObj)
+		glog.Error(err, jsonObj)
 		return err
 	}
 
@@ -264,7 +263,7 @@ func FetchTopo(topoMeta *TopoMeta) error {
 	return topoMeta.FetchTopoMeta()
 }
 
-func FetchMeta() error {
+func FetchConfigMeta() error {
 	err := FetchClusterVersion(&meta.clusterVersion)
 	if err != nil {
 		return err
@@ -296,7 +295,32 @@ func FetchMeta() error {
 	return nil
 }
 
-func Run(appName, metaDbName, idc, address string, initCh chan error, notify chan int) {
+func FetchFeedMeta() error {
+	err := meta.failoverConfig.FetchFailoverDoing()
+	if err != nil{
+		return err
+	}
+	err = meta.failoverConfig.FetchFailoverQueue()
+	if err != nil{
+		return err
+	}
+	err = meta.migrateConfig.FetchMigrateDoing()
+	if err != nil{
+		return err
+	}
+	err = meta.migrateConfig.FetchMigrateTasks()
+	if err != nil{
+		return err
+	}
+	err = meta.topo.FetchTopoMeta()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Run(appName, metaDbName, idc, address string, notify chan int, initCh chan error) {
 	meta = &Meta{
 		appName:        appName,
 		currIdc:        idc,
@@ -322,11 +346,17 @@ func Run(appName, metaDbName, idc, address string, initCh chan error, notify cha
 		return
 	}
 	meta.metaDBConn = dbConn
-	err = FetchMeta()
+	err = FetchConfigMeta()
 	if err != nil {
-		initCh <- fmt.Errorf("Fetch Meta error: %v", err)
+		initCh <- fmt.Errorf("Fetch meta error: %v", err)
 		return
 	}
+	err = FetchFeedMeta()
+	if err != nil {
+		initCh <- fmt.Errorf("Fetch feed error: %v", err)
+		return
+	}
+
 	glog.Info("Fetch meta data:", meta)
 	notify <- INIT_META_SUCCESS
 
@@ -343,7 +373,7 @@ func Run(appName, metaDbName, idc, address string, initCh chan error, notify cha
 			if cfgVer > meta.configVersion {
 				glog.Info("Old configversion:", meta.configVersion, ", ", "Current configVersion:", cfgVer)
 				glog.Info("Updat meta begin:", meta)
-				err = FetchMeta()
+				err = FetchConfigMeta()
 				if err != nil {
 					initCh <- fmt.Errorf("Fetch Meta error: %v", err)
 					break

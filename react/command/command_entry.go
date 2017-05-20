@@ -1,12 +1,13 @@
 package command
 
 import (
+	"fmt"
+	"sync"
+	"time"
 	"errors"
 	"reflect"
 	"strings"
-	"sync"
-	"time"
-
+	
 	"github.com/golang/glog"
 	"github.com/ksarch-saas/cfgServer/role"
 )
@@ -58,7 +59,8 @@ func (c *Controller) ProcessCommand(command Command, timeout time.Duration) (res
 		commandName = commandType[1]
 	}
 	if commandName != "" {
-		glog.Infof("OP", "Command: %s, Event:Start", commandName)
+		op := fmt.Sprintf("OP, Command: %s, Event:Start", commandName)
+		glog.Infof(op)
 	}
 
 	if command.Mutex() == MUTEX_COMMAND {
@@ -85,7 +87,8 @@ func (c *Controller) ProcessCommand(command Command, timeout time.Duration) (res
 		err = ErrProcessCommandTimedout
 	}
 	if commandName != "" {
-		glog.Infof("OP", "Command: %s, Event:End", commandName)
+		op := fmt.Sprintf("OP, Command: %s, Event:End", commandName)
+		glog.Infof(op)
 	}
 	return
 }

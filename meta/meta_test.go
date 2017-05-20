@@ -108,7 +108,8 @@ func TestRun(t *testing.T) {
 	flag.Lookup("logtostderr").Value.Set("true")
 
 	initCh := make(chan error)
-	go Run("asddd", "ssdb-test", "tc", "10.67.17.43:3700", initCh)
+	notifyCh := make(chan int)
+	go Run("ssdb-test", "ssdb-test", "tc", "10.67.17.43:3700", notifyCh, initCh)
 	err := <-initCh
 	if err != nil {
 		fmt.Println(err)

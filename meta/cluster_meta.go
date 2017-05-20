@@ -49,3 +49,7 @@ func (meta *Meta)ClusterIdcs() []string {
 func ProbeTimeout() int {
 	return meta.clusterConfig.ClusterNodeTimeout
 }
+
+func ClusterNodeTimeout() int {
+	return meta.clusterConfig.ClusterNodeTimeout
+}

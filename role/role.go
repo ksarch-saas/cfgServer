@@ -1,7 +1,7 @@
 package role
 
 import (
-	// "fmt"
+	"fmt"
 	"strings"
 	"time"
 
@@ -172,14 +172,13 @@ func Run(initCh chan error) {
 		}
 	} else if err != nil {
 		glog.Error("Acquire lock error:", err)
-		initCh <- err
 	}
 
 	roleTickChan := time.NewTicker(time.Second * time.Duration(meta.CfgCheckMutextTimeout())).C
 	for {
 		select {
-		case <- roleTickChan:
-			if !meta.IsMasterRegion(roleManager.own.Region) {
+		case <-roleTickChan:
+			if !meta.IsMasterCfgRegion(roleManager.own.Region) {
 				glog.Info("Cross region slave do not participate in compete")
 				break
 			}
@@ -190,8 +189,7 @@ func Run(initCh chan error) {
 					glog.Info("Master change slave")
 					break
 				} else if err != nil {
-					glog.Error("Extend lock error:", err)
-					initCh <- err
+					glog.Info("Extend lock error:", err)
 				}
 
 				roleManager.UpdateSlaveStatus()
@@ -199,8 +197,7 @@ func Run(initCh chan error) {
 				if change {
 					err = UpdateSlaveCfg(roleManager.slaves)
 					if err != nil {
-						glog.Error("Update slave cfgs failed:", roleManager.slaves)
-						initCh <- err
+						initCh <- fmt.Errorf("Update slave cfgs failed: %v", err)
 					}
 				}
 			} else if SelfRole() == ROLE_SLAVE {
@@ -211,13 +208,14 @@ func Run(initCh chan error) {
 					glog.Info("Slave change master")
 					err = UpdateMasterCfg(roleManager.own)
 					if err != nil {
-						glog.Error("Update master failed:", err)
-						initCh <- err
+						initCh <- fmt.Errorf("Update master failed: %v", err)
 					}
-					break
+					err = meta.FetchFeedMeta()
+					if err != nil {
+						initCh <- fmt.Errorf("Fetch feed error: %v", err)
+					}
 				} else if err != nil {
 					glog.Error("Acquire lock error:", err)
-					initCh <- err
 				}
 			}
 		}

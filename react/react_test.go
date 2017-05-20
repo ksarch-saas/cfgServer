@@ -22,7 +22,7 @@ func TestUpdatenodes(t *testing.T) {
 
 	initCh := make(chan error)
 	notifyCh := make(chan int)
-	go meta.Run("ssdb-test", "ssdb-test", "tc", "10.67.17.43:3700", initCh, notifyCh)
+	go meta.Run("ssdb-test", "ssdb-test", "tc", "10.94.46.20:2335", notifyCh, initCh)
 	for {
 		result := 0
 		result = <- notifyCh
@@ -30,7 +30,7 @@ func TestUpdatenodes(t *testing.T) {
 			break
 		}
 	}
-
+	cluster.Init()
 	go role.Run(initCh)
 
 	fe := NewReact(2335)
@@ -41,10 +41,10 @@ func TestUpdatenodes(t *testing.T) {
 	initCh2   := make(chan error)
 	go cluster.DiscoverCron("/home/users/lichang04/ksarch/gopath/src/github.com/ksarch-saas/cfgServer/seeds.yml", notifyCh2, initCh2)
 	
-	up := <- notifyCh2
-	if up == 1 {
-		cluster.ProbeCron(notifyCh2)
-	}
+	
+	cluster.ProbeCron(notifyCh2)
+	
+
 
 	// nodes := []*meta.Node{
 	// 	&meta.Node{

@@ -1,17 +1,18 @@
 package meta
 
 
-type FailoveEntity struct {
-	OldMaster			string
-	NewMaster			string
+type FailoverEntity struct {
+	NodeID				string
+	Role				string
+	Region				string
 }
 
 type FailoverMeta struct {
 	AutoFailover				bool
 	FailoverInterval			int
 	FailoverConcurrency			int
-	FailoverDoing				[]FailoveEntity
-	FailoverQueue				[]FailoveEntity
+	FailoverDoing				[]FailoverEntity
+	FailoverQueue				[]FailoverEntity
 }
 
 const (
@@ -30,6 +31,22 @@ func (failoverMeta *FailoverMeta) FetchFailoverMeta() error{
 	}
 	if failoverMeta.FailoverConcurrency == CONFIG_NIL {
 		failoverMeta.FailoverConcurrency = DEFAULT_FAILOVERCONCURRENCY
+	}
+	return nil
+}
+
+func (failoverMeta *FailoverMeta) FetchFailoverDoing() error{
+	err := FetchMetaDB(".FailoverDoing" , &failoverMeta.FailoverDoing)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (failoverMeta *FailoverMeta) FetchFailoverQueue() error{
+	err := FetchMetaDB(".FailoverQueue" , &failoverMeta.FailoverQueue)
+	if err != nil {
+		return err
 	}
 	return nil
 }

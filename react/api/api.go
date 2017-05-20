@@ -1,8 +1,5 @@
 package api
 
-import (
-	// "github.com/ksarch-saas/cfgServer/cluster"
-)
 
 type Response struct {
 	Errno  int         `json:"errno"`
@@ -22,9 +19,8 @@ func MakeFailureResponse(msg string) Response {
 	return MakeResponse(777, msg, nil)
 }
 
-
 type UpdateNodesParams struct {
-	Region 			string       			`json:"region"`
-	CfgID			string					`json:"CfgID"`
-	Seeds  			interface{} 			`json:"seeds"`
+	Region 			string       	`json:"region"`
+	CfgID			string			`json:"CfgID"`
+	Seeds  			interface{} 	`json:"seeds"`
 }
