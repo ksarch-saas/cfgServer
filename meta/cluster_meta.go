@@ -53,3 +53,11 @@ func ProbeTimeout() int {
 func ClusterNodeTimeout() int {
 	return meta.clusterConfig.ClusterNodeTimeout
 }
+
+func ClusterSafeMode() bool {
+	return meta.clusterConfig.SafeMode
+}
+
+func ClusterFailoverRatio() int {
+	return meta.clusterConfig.FailoverRatio
+}

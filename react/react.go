@@ -25,8 +25,7 @@ func NewReact(httpPort int) *React {
 	}
 	
 	gin.SetMode(gin.ReleaseMode)
-
-	react.Router.POST("/region/updatenodes", react.HandleUpdateNodes)
+	react.Router.POST(api.UpdateNodesPath, react.HandleUpdateNodes)
 
 	return react
 }

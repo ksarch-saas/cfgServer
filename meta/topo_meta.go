@@ -61,13 +61,7 @@ func (node *Node) IsMaster() bool {
 
 func (node *Node) Region() string {
 	index := strings.Index(node.Tag, ":")
-	if index == -1 || index == 0 {
-		return ""
-	} else if index == 1 {
-		return node.Tag[0:1]
-	} 
-	
-	return node.Tag[:index-1]
+	return node.Tag[:index]
 }
 
 

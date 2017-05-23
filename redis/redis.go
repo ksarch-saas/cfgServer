@@ -112,6 +112,8 @@ func Info(addr string) (map[string]string, error){
 			info["master_port"] = rep[strings.Index(rep, ":")+1 : len(rep)]
 		} else if strings.Contains(rep, "last_seq"){
 			info["last_seq"] = rep[strings.Index(rep, ":")+1 : len(rep)]
+		} else if strings.Contains(rep, "last_key"){
+			info["last_key"] = rep[strings.Index(rep, ":")+1 : len(rep)]
 		} else if strings.Contains(rep, "readonly"){
 			info["readonly"] = rep[strings.Index(rep, ":")+1 : len(rep)]
 		} else if strings.Contains(rep, "slot"){
@@ -140,8 +142,37 @@ func Info(addr string) (map[string]string, error){
 	return info, nil
 }
 
+func ChangeMaster(addr string, master_addr string, last_seq string, last_key string) error{
+	colon := strings.Index(master_addr, ":")
+	_, err := RedisCli(addr, "change_master_to", master_addr[:colon], master_addr[colon+1:], last_seq, last_key)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func StartSlave(addr string) error{
+	_, err := RedisCli(addr, "start_slave")
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func StopSlave(addr string) error{
+	_, err := RedisCli(addr, "stop_slave")
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func UnlockDB(addr string) error{
+	_, err := RedisCli(addr, "unlock_db")
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 

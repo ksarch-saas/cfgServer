@@ -1,114 +1,130 @@
 package cluster
 
 import (
-	"time"
 	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/ksarch-saas/cfgServer/meta"
 )
 
-
 type NodeState struct {
-	node      		*meta.Node
-	version 		int64
-	time      		time.Time
-	voteTotal 		int
-	voteFail  		int
-	voteLocal 		int
-	fail			bool
+	Node      *meta.Node
+	Version   int64
+	Time      time.Time
+	VoteTotal int
+	VoteFail  int
+	VoteLocal int
+	Fail      bool
 }
 
 type ReplicateSet struct {
-	master *meta.Node
-	slaves map[*meta.Node][]*meta.Node
+	Master *meta.Node
+	Slaves []*meta.Node
 }
 
 type ClusterState struct {
-	cluster       	*meta.ClusterMeta
-	version			int64
-	update			bool
-	nodeStates    	map[string]*NodeState
+	Cluster    *meta.ClusterMeta
+	Version    int64
+	Update     bool
+	NodeStates map[string]*NodeState
 }
 
 var cs *ClusterState
 
-func UpdateNodeStates(seeds map[string]SeedNode ,cfg *meta.CfgNode) {
-	cs.version = cs.version + 1
+func GetClusterState() *ClusterState {
+	return cs
+}
+
+func UpdateNodeStates(seeds map[string]SeedNode, cfg *meta.CfgNode) {
+	cs.Version = cs.Version + 1
 	for host, seed := range seeds {
-		ns, ok := cs.nodeStates[host]
+		ns, ok := cs.NodeStates[host]
 		if !ok {
 			ns = &NodeState{
-				node: 		&seed.node,
-				version: 	cs.version,
-				time:   	time.Now(),
+				Node:    &seed.Node,
+				Version: cs.Version,
+				Time:    time.Now(),
 			}
-			cs.update = true
-			cs.nodeStates[host] = ns
+			cs.Update = true
+			cs.NodeStates[host] = ns
 			continue
 		}
 
-		if !ns.node.Equal(&seed.node) {
-			cs.update = true
-			ns.node = &seed.node
+		if !ns.Node.Equal(&seed.Node) {
+			cs.Update = true
+			ns.Node = &seed.Node
 		}
-		ns.version = cs.version
+		ns.Version = cs.Version
 
-		if !ns.fail && strings.EqualFold(seed.status, SEED_FAIL) {
-			if ns.voteTotal == 0 {
-				ns.time = time.Now()
+		if !ns.Fail && strings.EqualFold(seed.Status, SEED_FAIL) {
+			if ns.VoteTotal == 0 {
+				ns.Time = time.Now()
 			}
 
-			endTime := ns.time.Add(time.Duration(meta.ClusterNodeTimeout() * 2))
+			endTime := ns.Time.Add(time.Duration(meta.ClusterNodeTimeout() * 2))
 			if time.Now().After(endTime) {
-				cs.update    = true
-				ns.voteTotal = 0
-				ns.voteFail  = 0
-				ns.voteLocal = 0
-				ns.node 	 = &seed.node
+				cs.Update = true
+				ns.VoteTotal = 0
+				ns.VoteFail = 0
+				ns.VoteLocal = 0
+				ns.Node = &seed.Node
 				continue
 			}
 
-			ns.voteTotal = ns.voteTotal + 1
-			ns.voteFail  = ns.voteFail +1
-			if strings.EqualFold(cfg.Region, ns.node.Region()) {
-				ns.voteLocal = ns.voteLocal + 1
+			ns.VoteTotal = ns.VoteTotal + 1
+			ns.VoteFail = ns.VoteFail + 1
+			if strings.EqualFold(cfg.Region, ns.Node.Region()) {
+				ns.VoteLocal = ns.VoteLocal + 1
 			}
 
-			if ns.voteFail > (meta.SlaveCfgNum() + 1)/2 && ns.voteLocal > 0{
-				ns.fail = true
-				ns.node.Status = meta.NS_FAIL
+			if ns.VoteFail > (meta.SlaveCfgNum()+1)/2 && ns.VoteLocal > 0 {
+				ns.Fail = true
+				ns.Node.Status = meta.NS_FAIL
+
+				if strings.EqualFold(ns.Node.Role, meta.NR_SLAVE) {
+					continue
+				}
+				entity := &meta.FailoverEntity{
+					NodeID: ns.Node.NodeID,
+					Role:   ns.Node.Role,
+					Region: ns.Node.Region(),
+					NewID:  "",
+				}
+				AddFailoverTasks(entity)
 			}
+
 		}
 
-		if ns.fail && strings.EqualFold(seed.status, SEED_LIVE) {
-			cs.update    = true
-			ns.voteTotal = 0
-			ns.voteFail  = 0
-			ns.voteLocal = 0
-			ns.node 	 = &seed.node
+		if ns.Fail && strings.EqualFold(seed.Status, SEED_LIVE) {
+			cs.Update = true
+			ns.VoteTotal = 0
+			ns.VoteFail = 0
+			ns.VoteLocal = 0
+			ns.Node = &seed.Node
 		}
 	}
 
-	for host, ns :=range cs.nodeStates {
-		if ns.version == cs.version {
+	for host, ns := range cs.NodeStates {
+		if ns.Version == cs.Version {
 			continue
 		}
-		cs.update    = true
-		delete(cs.nodeStates, host)
+		cs.Update = true
+		delete(cs.NodeStates, host)
 	}
 }
 
 func UpdateClusterState() error {
-	if !cs.update {
+	if !cs.Update {
 		return nil
 	}
 
-	cs.update = false
+	cs.Update = false
 	topo := meta.TopoMeta{
 		Nodes: []meta.Node{},
 	}
-	for _, ns :=range cs.nodeStates {
-		topo.Nodes = append(topo.Nodes, *ns.node)
+	for _, ns := range cs.NodeStates {
+		topo.Nodes = append(topo.Nodes, *ns.Node)
 	}
 
 	err := meta.UpdateMetaDB(".TopoMeta", &topo)
@@ -118,15 +134,23 @@ func UpdateClusterState() error {
 	}
 	meta.SetTopo(topo)
 
+	// update clusterVersion to notify proxy update topo
+	clusterVersion := meta.ClusterVersion()
+	clusterVersion = clusterVersion + 1
+	err = meta.SetClusterVersion(clusterVersion)
+	if err != nil {
+		glog.Error("Update cluster version error:", err)
+		return err
+	}
+
 	return nil
 }
 
 func Init() {
 	cs = &ClusterState{
-		cluster:       	meta.ClusterConfig(),
-		version:		0,
-		update:			false,
-		nodeStates:    	make(map[string]*NodeState),
+		Cluster:    meta.ClusterConfig(),
+		Version:    0,
+		Update:     false,
+		NodeStates: make(map[string]*NodeState),
 	}
-	glog.Info(cs)
 }

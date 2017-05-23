@@ -29,9 +29,9 @@ var (
 )
 
 type SeedNode struct {
-	node		meta.Node
-	status 		string		/* current cfg view, the value is  SEED_PFAIL  SEED_FAIL SEED_LIVE*/
-	version		int64
+	Node		meta.Node
+	Status 		string		/* current cfg view, the value is  SEED_PFAIL  SEED_FAIL SEED_LIVE*/
+	Version		int64
 }
 
 func UpdateNodeInfo(node *meta.Node, info map[string]string) {
@@ -99,15 +99,15 @@ func UpdateSeedNodes(seeds map[string]string) {
 			continue
 		}
 
-		sNode.version  		= nodeUpdateVersion
-		sNode.status   		= SEED_LIVE
-		node		  	   := &sNode.node
+		sNode.Version  		= nodeUpdateVersion
+		sNode.Status   		= SEED_LIVE
+		node		  	   := &sNode.Node
 		node.NodeID    		= host
 		node.Tag 	   		= tag
 		nodeInfo, err 	   := redis.Info(host)
 		if err != nil {
 			glog.Error("Update node info error:", err, host)
-			sNode.status    = SEED_FAIL
+			sNode.Status    = SEED_FAIL
 			node.SlotRange	= []meta.Range{}
 			node.Status		= meta.NS_OFFLINE
 			node.ParentID	= ""
@@ -119,7 +119,7 @@ func UpdateSeedNodes(seeds map[string]string) {
 	}
 
 	for key, sdn :=range seedNodes{
-		if sdn.version == nodeUpdateVersion {
+		if sdn.Version == nodeUpdateVersion {
 			continue
 		}
 		glog.Info("Delete node:", sdn)
@@ -132,16 +132,16 @@ func ProbeSeedNodes(){
 	for host, sNode :=range seedNodes {
 		nodeInfo, err := redis.Info(host)
 		if err != nil {
-			switch sNode.status {
+			switch sNode.Status {
 			case SEED_LIVE:
-				sNode.status = SEED_PFAIL
+				sNode.Status = SEED_PFAIL
 			case SEED_PFAIL:
-				sNode.status = SEED_FAIL
+				sNode.Status = SEED_FAIL
 			default :
-				sNode.status = SEED_FAIL
+				sNode.Status = SEED_FAIL
 			}
 		}
-		UpdateNodeInfo(&sNode.node, nodeInfo)
+		UpdateNodeInfo(&sNode.Node, nodeInfo)
 	}
 }
 
@@ -153,8 +153,7 @@ func PostSeedsToMasterCfg(seeds map[string]SeedNode) {
 			Seeds:  	seeds,
 	}
 	glog.Info("Post seeds to master cfg:", req)
-	res, err := utils.HttpPost(url, req, 5*time.Second)
-	glog.Info(res, err)
+	utils.HttpPost(url, req, 5*time.Second)
 }
 
 func ProbeCron(notifyCh chan int) {

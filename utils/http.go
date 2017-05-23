@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/ksarch-saas/cfgServer/react/api"
 )
 
@@ -18,8 +17,7 @@ type ExtraHeader struct {
 }
 
 func do(method, url string, in interface{}, timeout time.Duration, extra *ExtraHeader) (*api.Response, error) {
-	reqJson, _ := json.Marshal(in)
-	glog.Info(string(reqJson))
+	reqJson, err := json.Marshal(in)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqJson))
 	if err != nil {
 		return nil, err
